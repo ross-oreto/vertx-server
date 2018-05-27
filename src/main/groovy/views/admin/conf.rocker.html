@@ -1,0 +1,21 @@
+@import java.util.List
+@args (String title, List<String> files)
+
+@css => {
+    <link rel="stylesheet" href='/assets/jsoneditor/jsoneditor.min.css'>
+    <link rel="stylesheet" href='/assets/css/conf.css'>
+}
+
+@main.template(title, css, RockerContent.NONE) -> {
+    <script type="text/javascript" src='/assets/jsoneditor/jsoneditor.min.js'></script>
+    <script type="text/javascript" src='/assets/js/conf.js'></script>
+    <div>
+        <ul>
+            @for ((i, item) : files) {
+            <li id="@item" class="@if (i.index() == 0){ selected }">@item</li>
+            }
+            <li><button id="save-config">Save</button></li>
+        </ul>
+        <div id="jsonedit" class="jsonedit"></div>
+    </div>
+}

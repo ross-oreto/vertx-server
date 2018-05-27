@@ -1,0 +1,14 @@
+.gradle
+.idea
+*.iml
+.vertx
+build/
+out/
+.project
+.settings
+.classpath
+data/
+logs/
+/**/secrets*
+vid
+port

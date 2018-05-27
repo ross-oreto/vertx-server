@@ -1,0 +1,14 @@
+body { width: 100%; }
+ul { display: inline-block; width: 175px; vertical-align: top; margin: 0;}
+li { padding: 5px; list-style-type: none; }
+li.selected { background-color: #3883fa; }
+.log-table { display: inline-block; width: 80%; }
+.button-group { padding-left: 40px; }
+
+tfoot {
+    display: table-header-group;
+}
+
+table.dataTable tfoot th, table.dataTable tfoot td {
+    padding: 10px 0 0 0;
+}

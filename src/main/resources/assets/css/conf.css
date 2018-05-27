@@ -1,0 +1,7 @@
+body { width: 960px; }
+ul { display: inline-block; width: 175px; vertical-align: top; margin: 0;}
+li { padding: 5px; list-style-type: none; }
+li.selected { background-color: #3883fa; }
+.jsonedit { display: inline-block; width: 700px; }
+.button-group { padding-left: 40px; }
+/*div.jsoneditor-outer { height: 500px; }*/

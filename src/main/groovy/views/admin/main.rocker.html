@@ -1,0 +1,22 @@
+@args (String title, RockerContent css, RockerContent js, RockerBody content)
+
+<html lang="en">
+<head>
+    <title>@title</title>
+    @css
+    <link rel="stylesheet" href='/assets/css/admin.css'>
+    <link href="/assets/noty/noty.css" rel="stylesheet">
+    <link href="/assets/noty/themes/relax.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    @js
+<body>
+    <ul class="nav">
+        <li><a href="/admin/logs">Logs</a></li>
+        <li><a href="/admin/conf">Conf</a></li>
+    </ul>
+    <br>
+    <br>
+    @content
+    <script type="text/javascript" src='/assets/noty/noty.min.js'></script>
+</body>
+</html>

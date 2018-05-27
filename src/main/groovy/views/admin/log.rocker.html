@@ -1,0 +1,45 @@
+@import java.util.List
+@args (String title, List<String> files)
+
+@css => {
+    <link rel="stylesheet" href="//cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href='/assets/css/log.css'>
+}
+
+@main.template(title, css, RockerContent.NONE) -> {
+    <script type="text/javascript" src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src='/assets/js/log.js'></script>
+    <div>
+        <ul>
+            @for ((i, item) : files) {
+            <li id="@item" class="@if (i.index() == 0){ selected }">@item</li>
+            }
+            <li><button id="delete-log">Delete</button></li>
+            <li><a href="#" id="view-raw-log" target="_blank">View raw log</a></li>
+        </ul>
+        <div class="log-table">
+            <table id="log-table" style="width:100%">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>DateTime</th>
+                    <th>Date</th>
+                    <th>Level</th>
+                    <th>Class</th>
+                    <th>Message</th>
+                </tr>
+                </thead>
+                <tfoot>
+                <tr>
+                    <th>Id</th>
+                    <th>DateTime</th>
+                    <th>Date</th>
+                    <th>Level</th>
+                    <th>Class</th>
+                    <th>Message</th>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}

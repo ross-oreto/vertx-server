@@ -1,0 +1,207 @@
+<project name="vertx-server" default="run" basedir=".">
+    <property name="winShell" value="cmd" />
+    <property name="mainVerticle" value="org.oreto.vertx.server.AppServer"/>
+    <property name="blockedThreadCheckInterval" value="10000"/>
+    <property name="loggerFactory" value="-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"/>
+    <property name="version" value="1.0-SNAPSHOT"/>
+    <property name="jarPath" value="build/libs/${ant.project.name}-${version}-standalone.jar"/>
+    <property name="env" value="dev"/>
+
+    <condition property="isWindows">
+        <os family="windows"/>
+    </condition>
+
+    <condition property="jarNotExists">
+        <not>
+            <available file="${jarPath}"/>
+        </not>
+    </condition>
+
+    <condition property="gradlePath" value="gradlew.bat">
+        <os family="windows"/>
+    </condition>
+    <condition property="javaPath" value="java">
+        <os family="windows"/>
+    </condition>
+    <condition property="vertxPath" value="vertx.bat">
+        <os family="windows"/>
+    </condition>
+
+    <condition property="gradlePath" value="/opt/apps/.sdkman/candidates/gradle/current/bin/gradle">
+        <not>
+            <os family="windows"/>
+        </not>
+    </condition>
+    <condition property="javaPath" value="/opt/apps/.sdkman/candidates/java/current/bin/java">
+        <not>
+            <os family="windows"/>
+        </not>
+    </condition>
+    <condition property="vertxPath" value="/opt/apps/.sdkman/candidates/vertx/current/bin/vertx">
+        <not>
+            <os family="windows"/>
+        </not>
+    </condition>
+
+    <!-- build jar -->
+    <target name="-win-build-jar" if="isWindows">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="${gradlePath}"/>
+            <arg value="-Pversion=${version}"/>
+            <arg value="shade"/>
+        </exec>
+    </target>
+    <target name="-bash-build-jar" unless="isWindows">
+        <exec executable="${gradlePath}">
+            <arg value="-Pversion=${version}"/>
+            <arg value="shade"/>
+        </exec>
+    </target>
+    <target name="build-jar" depends="-win-build-jar,-bash-build-jar" description="build the executable jar"/>
+    <target name="-build-jar-not-exists" if="jarNotExists">
+        <antcall target="build-jar"/>
+    </target>
+
+    <!-- run with redeploy -->
+    <target name="-win-run" if="isWindows">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="start"/>
+            <arg value="${gradlePath}"/>
+            <arg value="run"/>
+            <arg value="-Penv=${env}"/>
+            <arg value="-PblockedThreadCheckInterval=${blockedThreadCheckInterval}"/>
+        </exec>
+    </target>
+    <target name="-bash-run" unless="isWindows">
+        <exec executable="${gradlePath}">
+            <arg value="run"/>
+            <arg value="-Penv=${env}"/>
+            <arg value="-PblockedThreadCheckInterval=${blockedThreadCheckInterval}"/>
+        </exec>
+    </target>
+    <target name="run" depends="-win-run,-bash-run" description="run application in redeploy mode"/>
+
+    <!-- start app -->
+    <target name="-win-start" if="isWindows" depends="-win-build-jar">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="${javaPath}"/>
+            <arg value="-jar"/>
+            <arg value="${jarPath}"/>
+            <arg value="start"/>
+            <arg value="-Denv=${env}"/>
+            <arg value="--vertx-id=${ant.project.name}"/>
+            <arg value="-Dvertx.options.blockedThreadCheckInterval=${blockedThreadCheckInterval}"/>
+            <arg value="${loggerFactory}"/>
+        </exec>
+        <sleep seconds="3"/>
+    </target>
+    <target name="-bash-start" unless="isWindows" depends="-bash-build-jar">
+        <exec executable="${javaPath}">
+            <arg value="-jar"/>
+            <arg value="${jarPath}"/>
+            <arg value="start"/>
+            <arg value="-Denv=${env}"/>
+            <arg value="--vertx-id=${ant.project.name}"/>
+            <arg value="-Dvertx.options.blockedThreadCheckInterval=${blockedThreadCheckInterval}"/>
+            <arg value="${loggerFactory}"/>
+        </exec>
+        <sleep seconds="3"/>
+    </target>
+    <target name="start" depends="-win-start,-bash-start" description="start application standalone jar"/>
+
+    <!-- stop app -->
+    <target name="-win-create-vid" if="isWindows">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="${vertxPath} list | findstr &quot;${mainVerticle} ${ant.project.name}&quot; | sed -e &quot;s/\s.*$//&quot; > vid"/>
+        </exec>
+    </target>
+    <target name="-bash-create-vid" unless="isWindows">
+        <exec executable="${vertxPath}">
+            <arg value="list | grep &quot;${mainVerticle}&quot; | grep &quot;${ant.project.name}&quot; | sed -e 's/\s.*$//' > vid"/>
+        </exec>
+    </target>
+    <target name="-create-vid" depends="-win-create-vid,-bash-create-vid"/>
+
+    <target name="-win-stop" depends="-win-kill,-win-create-vid" if="isWindows">
+        <loadfile property="vid" srcFile="vid"/>
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="${vertxPath}"/>
+            <arg value="stop"/>
+            <arg value="${vid}"/>
+        </exec>
+    </target>
+    <target name="-bash-stop" depends="-bash-create-vid" unless="isWindows">
+        <loadfile property="vid" srcFile="vid"/>
+        <exec executable="${vertxPath}">
+            <arg value="stop"/>
+            <arg value="${vid}"/>
+        </exec>
+    </target>
+    <target name="stop" depends="-win-stop,-bash-stop" description="stop application"/>
+
+    <target name="re-run" depends="-win-stop,-bash-stop" description="restart application">
+        <sleep seconds="3"/>
+        <antcall target="run"/>
+    </target>
+
+    <target name="re-start" depends="-win-stop,-bash-stop" description="restart application">
+        <sleep seconds="3"/>
+        <antcall target="start"/>
+    </target>
+
+    <target name="-win-clean" if="isWindows">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="${gradlePath}"/>
+            <arg value="clean"/>
+        </exec>
+    </target>
+    <target name="-bash-clean" unless="isWindows">
+        <exec executable="${gradlePath}">
+            <arg value="clean"/>
+        </exec>
+    </target>
+
+    <!-- run tests -->
+    <target name="-win-test" if="isWindows" depends="-win-clean,-win-start">
+        <exec executable="${winShell}" outputproperty="failLog">
+            <arg value="/c"/>
+            <arg value="${gradlePath}"/>
+            <arg value="test"/>
+        </exec>
+    </target>
+    <target name="-bash-test" unless="isWindows" depends="-bash-clean,-bash-start">
+        <exec executable="${gradlePath}" outputproperty="failLog">
+            <arg value="test"/>
+        </exec>
+    </target>
+    <target name="test" depends="-win-test,-bash-test" description="run applications test cases">
+        <fail message="tests failed ${failLog}">
+            <condition>
+                <isset property="failLog"/>
+            </condition>
+        </fail>
+    </target>
+
+    <target name="-win-kill">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="taskkill"/>
+            <arg value="/IM"/>
+            <arg value="${winShell}.exe"/>
+        </exec>
+    </target>
+
+    <!-- other -->
+    <target name="win-shell">
+        <exec executable="${winShell}">
+            <arg value="/c"/>
+            <arg value="start"/>
+        </exec>
+    </target>
+</project>

@@ -1,0 +1,58 @@
+{
+  "routes": [
+    {
+      "path": "/assets/*",
+      "method": ["get"],
+      "handler": "static",
+      "webRoot": "assets",
+      "directoryListing": false,
+      "cachingEnabled": false
+    },
+    {
+      "path": "/ping",
+      "method": ["get"],
+      "handler": "ping"
+    },
+    {
+      "path": "/admin/conf",
+      "method": ["get"],
+      "produces": ["text/html"],
+      "handler": "conf"
+    },
+    {
+      "path": "/admin/conf/:name",
+      "method": ["get"],
+      "produces": ["application/json"],
+      "handler": "getConf"
+    },
+    {
+      "path": "/admin/conf/:name",
+      "method": ["post"],
+      "consumes": ["application/json"],
+      "produces": ["application/json"],
+      "handler": "saveConf"
+    },
+    {
+      "path": "/admin/logs",
+      "method": ["get"],
+      "produces": ["application/json"],
+      "handler": "logs"
+    },
+    {
+      "path": "/admin/logs/:name",
+      "method": ["get"],
+      "produces": ["text/plain", "application/json"],
+      "handler": "getLog"
+    },
+    {
+      "path": "/admin/logs/:name",
+      "method": ["delete"],
+      "handler": "deleteLog"
+    },
+    {
+      "path": "/admin",
+      "method": ["get"],
+      "handler": "admin"
+    }
+  ]
+}

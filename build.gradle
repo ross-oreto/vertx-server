@@ -1,0 +1,87 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
+plugins {
+    id 'maven'
+    id 'groovy'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '2.0.2'
+    id "com.fizzed.rocker" version "0.24.0"
+    id 'idea'
+}
+
+group 'org.oreto'
+sourceCompatibility = 1.8
+def vertVersion = '3.5.+'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.codehaus.groovy:groovy-all:2.4.13'
+    // vertx core deps
+    compile "io.vertx:vertx-core:$vertVersion"
+    compile "io.vertx:vertx-lang-groovy:$vertVersion"
+    compile "io.vertx:vertx-config:$vertVersion"
+    // web deps
+    compile "io.vertx:vertx-web-templ-rocker:$vertVersion"
+    compile "com.fizzed:rocker-runtime:0.24.0"
+    // logging
+    compile 'org.apache.logging.log4j:log4j-api:2.+'
+    compile 'org.apache.logging.log4j:log4j-core:2.+'
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:2.+"
+    // test deps
+    testCompile (
+            'junit:junit:4.12',
+            'org.spockframework:spock-core:1.1-groovy-2.4',
+            'org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'
+    )
+}
+
+mainClassName = 'io.vertx.core.Launcher'
+def mainVert = 'org.oreto.vertx.server.AppServer'
+
+// Vert.x will call this task on changes
+def doOnChange
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    doOnChange = '.\\gradlew classes'
+} else {
+    doOnChange = './gradlew classes'
+}
+
+// Vert.x watches for file changes in all subdirectories
+def watchForGroovy = 'src/main/**/*.groovy,src/main/**/*.html,src/main/**/*.css,src/main/**/*.js'
+run {
+    def env = project.hasProperty('env') ? env : 'local'
+    def blockedThreadCheckInterval = project.hasProperty('blockedThreadCheckInterval') ? blockedThreadCheckInterval : 10000
+    args = ['run'
+            , "-Dvertx.options.blockedThreadCheckInterval=$blockedThreadCheckInterval"
+            , "-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
+            , "-Denv=$env"
+//            , "-Dvertx-id=${project.name}"
+            , mainVert
+            , "--redeploy=$watchForGroovy"
+            , "--launcher-class=$mainClassName"
+            , "--on-redeploy=$doOnChange"]
+}
+
+task shade(type: ShadowJar) {
+    group = "shadow"
+    description = "Builds app fat jar"
+    archiveName = "${project.name}-$version-standalone.jar"
+    manifest.attributes 'Main-Verticle': "groovy:$mainVert", 'Main-Class': "$mainClassName"
+    from(project.convention.getPlugin(JavaPluginConvention).sourceSets.main.output)
+    configurations = [project.configurations.runtime]
+}
+
+processResources {
+    from 'src/main/groovy'
+}
+
+sourceSets {
+    main {
+        rocker {
+            srcDir('src/main/groovy/views')
+        }
+    }
+}
