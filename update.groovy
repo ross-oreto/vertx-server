@@ -15,13 +15,15 @@ import java.io.StringReader
 import org.apache.commons.io.IOUtils
 import java.util.Base64
 
-Update.updateDir = this.args.length ? '/' + this.args[0] + '/' : '/'
+Update.updateDir = this.args.length > 0 && this.args[0] != '/' ? '/' + this.args[0] + '/' : '/'
+Update.outputDir = this.args.length > 1 ? this.args[1] : '.'
 Update.checkAuth()
 Update.run()
 Update.displayResults()
 
 class Update {
     static String updateDir
+    static String outputDir
     static String api = "https://api.github.com"
     static String repoUri = '/repos/ross-oreto/vertx-server'
     static String contentsUri = "$repoUri/contents"
@@ -74,18 +76,25 @@ class Update {
     static int skipped = 0
 
     static void checkAuth() {
-        File file = new File('auth')
+        File file = new File(Paths.get('.', outputDir, 'auth').toString())
         if (file.exists()) {
             String auth = file.text.trim()
             if (auth.startsWith('Basic'))
                 addAuth(auth)
             else {
-                auth = 'Basic ' + Base64.getEncoder().encodeToString(auth.getBytes(UTF8))
-                addAuth(auth)
+                addAuth(encodeBasic(auth))
             }
         } else {
-            println('authentication not found')
+            String user = console.readLine("enter user: ")
+            String pass = console.readLine("enter pass: ")
+            String userpass = "$user:$pass".trim()
+            addAuth(encodeBasic(userpass))
+            file.write(userpass)
         }
+    }
+
+    static String encodeBasic(String basic) {
+        'Basic ' + Base64.getEncoder().encodeToString(basic.getBytes(UTF8))
     }
 
     static run(String uri = '') {
@@ -161,7 +170,7 @@ class Update {
     }
 
     static Path uriToPath(String uri) {
-        Paths.get('.', isWindows ? uri.replaceAll('/', '\\\\') : uri)
+        Paths.get('.', outputDir, isWindows ? uri.replaceAll('/', '\\\\') : uri)
     }
 
     static void overwrite(Path path, def content) {
