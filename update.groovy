@@ -13,12 +13,15 @@ import java.io.ByteArrayInputStream
 import java.io.Console
 import java.io.StringReader
 import org.apache.commons.io.IOUtils
+import java.util.Base64
 
+Update.updateDir = this.args.length ? '/' + this.args[0] + '/' : '/'
 Update.checkAuth()
 Update.run()
 Update.displayResults()
 
 class Update {
+    static String updateDir
     static String api = "https://api.github.com"
     static String repoUri = '/repos/ross-oreto/vertx-server'
     static String contentsUri = "$repoUri/contents"
@@ -27,6 +30,8 @@ class Update {
 
     static String rawApi = 'https://rawgit.com'
     static String rawRepo = "$rawApi/ross-oreto/vertx-server/master"
+
+    static String UTF8 = 'utf-8'
 
     static Map headers = [
             'User-Agent': "Apache HTTPClient"
@@ -65,12 +70,19 @@ class Update {
     static boolean ALL_NO = false
     static int updated = 0
     static int created = 0
+    static int folders = 0
     static int skipped = 0
 
     static void checkAuth() {
         File file = new File('auth')
         if (file.exists()) {
-            addAuth(file.text.trim())
+            String auth = file.text.trim()
+            if (auth.startsWith('Basic'))
+                addAuth(auth)
+            else {
+                auth = 'Basic ' + Base64.getEncoder().encodeToString(auth.getBytes(UTF8))
+                addAuth(auth)
+            }
         } else {
             println('authentication not found')
         }
@@ -81,65 +93,75 @@ class Update {
         if(content instanceof Collection) {
             content.each {
                 def path = "$uri/${it['name']}"
+                def localPath = uriToPath(uri)
+                if (!Files.exists(localPath)) {
+                    new File(localPath.toString()).mkdir()
+                    folders++
+                }
                 run(path)
             }
         } else if (content.type == 'file') {
-            String path = isWindows ? uri.replaceAll('/', '\\\\') : uri
-            Path filePath = Paths.get('.', path)
+            if (uri.startsWith(updateDir)) {
+                Path filePath = uriToPath(uri)
 
-            boolean isBinary = false
-            def rawContent
-            def raw = path.endsWith('.jar') ||
-                    path.endsWith('.png') ||
-                    path.endsWith('.gif') ||
-                    path.endsWith('.jpg') ? getRawBinary(uri) : getRawContent(uri)
-            if (raw instanceof ByteArrayInputStream) {
-                isBinary = true
-                rawContent = new byte[raw.available()]
-                raw.read(rawContent)
-            } else if (raw instanceof StringReader) {
-                rawContent = IOUtils.toString(raw as StringReader)
-            } else {
-                rawContent = raw
-            }
-
-            if (Files.exists(filePath)) {
-                File file = new File(filePath.toString())
-                def fileBytes
-                if (isBinary) {
-                    fileBytes = file.bytes
+                boolean isBinary = false
+                def rawContent
+                def raw = uri.endsWith('.jar') ||
+                        uri.endsWith('.png') ||
+                        uri.endsWith('.gif') ||
+                        uri.endsWith('.jpg') ? getRawBinary(uri) : getRawContent(uri)
+                if (raw instanceof ByteArrayInputStream) {
+                    isBinary = true
+                    rawContent = new byte[raw.available()]
+                    raw.read(rawContent)
+                } else if (raw instanceof StringReader) {
+                    rawContent = IOUtils.toString(raw)
                 } else {
-                    fileBytes = file.getText('UTF-8')
-                    if(isWindows) {
-                        fileBytes = fileBytes.replaceAll('\r\n', '\n')
-                    }
+                    rawContent = raw
                 }
-                if (rawContent != fileBytes) {
-                    if (ALL_NO) {
-                        skip(filePath)
-                    } else if (ALL_YES) {
-                        overwrite(filePath, rawContent)
+
+                if (Files.exists(filePath)) {
+                    File file = new File(filePath.toString())
+                    def fileBytes
+                    if (isBinary) {
+                        fileBytes = file.bytes
                     } else {
-                        String answer = console.readLine("update $filePath? (y)es (n)o (Y)es to all (N)o to all: ")
-                        if (answer.startsWith('y')) {
-                            overwrite(filePath, rawContent)
-                        } else if (answer.startsWith('n')) {
-                            skip(filePath)
-                        } else if (answer.startsWith('Y')) {
-                            overwrite(filePath, rawContent)
-                            ALL_YES = true
-                        } else if (answer.startsWith('N')) {
-                            skip(filePath)
-                            ALL_NO = true
-                        } else {
-                            skip(filePath)
+                        fileBytes = file.getText(UTF8)
+                        if (isWindows) {
+                            fileBytes = fileBytes.replaceAll('\r\n', '\n')
                         }
                     }
+                    if (rawContent != fileBytes) {
+                        if (ALL_NO) {
+                            skip(filePath)
+                        } else if (ALL_YES) {
+                            overwrite(filePath, rawContent)
+                        } else {
+                            String answer = console.readLine("update $filePath? (y)es (n)o (Y)es to all (N)o to all: ")
+                            if (answer.startsWith('y')) {
+                                overwrite(filePath, rawContent)
+                            } else if (answer.startsWith('n')) {
+                                skip(filePath)
+                            } else if (answer.startsWith('Y')) {
+                                overwrite(filePath, rawContent)
+                                ALL_YES = true
+                            } else if (answer.startsWith('N')) {
+                                skip(filePath)
+                                ALL_NO = true
+                            } else {
+                                skip(filePath)
+                            }
+                        }
+                    }
+                } else {
+                    create(filePath, rawContent)
                 }
-            } else {
-                create(filePath, rawContent)
             }
         }
+    }
+
+    static Path uriToPath(String uri) {
+        Paths.get('.', isWindows ? uri.replaceAll('/', '\\\\') : uri)
     }
 
     static void overwrite(Path path, def content) {
@@ -159,9 +181,9 @@ class Update {
         if (content instanceof byte[]) {
             bytes = content
         } else if (isWindows) {
-            bytes = content.replaceAll('\n', '\r\n').bytes
+            bytes = content.replaceAll('\n', '\r\n').getBytes(UTF8)
         } else {
-            bytes = content.bytes
+            bytes = content.getBytes(UTF8)
         }
         bytes
     }
@@ -174,11 +196,13 @@ class Update {
     static void displayResults() {
         println("updated $updated files")
         println("created $created files")
+        println("created $folders folders")
         println("skipped $skipped files")
     }
 
+    static AUTH_HEADER = 'Authorization'
     static void addAuth(String auth) {
-        headers.put('Authorization', auth)
-        headersRaw.put('Authorization', auth)
+        headers.put(AUTH_HEADER, auth)
+        headersRaw.put(AUTH_HEADER, auth)
     }
 }
