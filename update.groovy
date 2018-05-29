@@ -144,13 +144,13 @@ class Update {
 
     static void overwrite(Path path, def bytes) {
         println("updating $path")
-        Files.write(path, bytes)
+        Files.write(path, bytes instanceof byte[] ? bytes : bytes.bytes)
         updated++
     }
 
     static void create(Path path, def bytes) {
         println("creating $path")
-        Files.write(path, bytes)
+        Files.write(path, bytes instanceof byte[] ? bytes : bytes.bytes)
         created++
     }
 
