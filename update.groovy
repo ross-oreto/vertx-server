@@ -42,6 +42,7 @@ class Update {
     static {
         client.parser.'application/vnd.github.v3.raw' = client.parser.'application/octet-stream'
     }
+    static final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
 
     static Object getContent(String uri) {
         HttpResponseDecorator response = client.get(['path': "${contentsUri}$uri", 'headers': headers])
@@ -83,7 +84,6 @@ class Update {
                 run(path)
             }
         } else if (content.type == 'file') {
-            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
             String path = isWindows ? uri.replaceAll('/', '\\\\') : uri
             Path filePath = Paths.get('.', path)
 
@@ -142,16 +142,28 @@ class Update {
         }
     }
 
-    static void overwrite(Path path, def bytes) {
+    static void overwrite(Path path, def content) {
         println("updating $path")
-        Files.write(path, bytes instanceof byte[] ? bytes : bytes.bytes)
+        Files.write(path, contentToBytes(content))
         updated++
     }
 
-    static void create(Path path, def bytes) {
+    static void create(Path path, def content) {
         println("creating $path")
-        Files.write(path, bytes instanceof byte[] ? bytes : bytes.bytes)
+        Files.write(path, contentToBytes(content))
         created++
+    }
+
+    static byte[] contentToBytes(def content) {
+        byte[] bytes
+        if (content instanceof byte[]) {
+            bytes = content
+        } else if (isWindows) {
+            bytes = content.replaceAll('\n', '\r\n').bytes
+        } else {
+            bytes = content.bytes
+        }
+        bytes
     }
 
     static void skip(Path path) {
