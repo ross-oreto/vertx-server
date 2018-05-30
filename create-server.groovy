@@ -77,6 +77,8 @@ static void createMainVerticle(String first, String project, String vert) {
         mainVertClass.write("""package $vertPackage
 
 import ${appPackage}.AppServer
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class $vertClassName extends AppServer {
     private static final Logger L = LoggerFactory.getLogger(${vertClassName}.class)
