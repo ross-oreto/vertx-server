@@ -92,7 +92,7 @@ abstract class VertxServer extends AbstractVerticle {
 
     Map configMapFor(String name) {
         config.getMap().findAll {
-            it.key?.startsWith("${name}.")
+            it.key?.startsWith(name)
         }
     }
 

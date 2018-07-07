@@ -1,10 +1,8 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     id 'maven'
     id 'groovy'
     id 'application'
-    id 'com.github.johnrengelman.shadow' version '2.0.2'
     id "com.fizzed.rocker" version "0.24.0"
     id 'idea'
 }
@@ -18,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    compile 'org.codehaus.groovy:groovy-all:2.4.13'
+    compile 'org.codehaus.groovy:groovy-all:2.4.15'
     // vertx core deps
     compile "io.vertx:vertx-core:$vertVersion"
     compile "io.vertx:vertx-lang-groovy:$vertVersion"
@@ -54,24 +52,22 @@ def watchForGroovy = 'src/main/**/*.groovy,src/main/**/*.html,src/main/**/*.css,
 run {
     def env = project.hasProperty('env') ? env : 'local'
     def blockedThreadCheckInterval = project.hasProperty('blockedThreadCheckInterval') ? blockedThreadCheckInterval : 10000
-    args = ['run'
-            , "-Dvertx.options.blockedThreadCheckInterval=$blockedThreadCheckInterval"
-            , "-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
-            , "-Denv=$env"
-//            , "-Dvertx-id=${project.name}"
-            , mainVert
-            , "--redeploy=$watchForGroovy"
-            , "--launcher-class=$mainClassName"
-            , "--on-redeploy=$doOnChange"]
-}
-
-task shade(type: ShadowJar) {
-    group = "shadow"
-    description = "Builds app fat jar"
-    archiveName = "${project.name}-$version-standalone.jar"
-    manifest.attributes 'Main-Verticle': "groovy:$mainVert", 'Main-Class': "$mainClassName"
-    from(project.convention.getPlugin(JavaPluginConvention).sourceSets.main.output)
-    configurations = [project.configurations.runtime]
+    args = project.hasProperty('start') ?
+            ['start'
+             , "-Dvertx.options.blockedThreadCheckInterval=$blockedThreadCheckInterval"
+             , "-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
+             , "-Denv=$env"
+             , mainVert
+             , "--vertx-id=${project.name}"
+             , "--launcher-class=$mainClassName"] :
+            ['run'
+             , "-Dvertx.options.blockedThreadCheckInterval=$blockedThreadCheckInterval"
+             , "-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
+             , "-Denv=$env"
+             , mainVert
+             , "--redeploy=$watchForGroovy"
+             , "--launcher-class=$mainClassName"
+             , "--on-redeploy=$doOnChange"]
 }
 
 processResources {

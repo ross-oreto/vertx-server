@@ -25,11 +25,11 @@ ant start
 ```
 - stop and re-run in redeploy mode
 ```
-ant re-run
+ant rerun
 ```
 - stop and re-start the standalone jar
 ```
-ant re-start
+ant restart
 ```
 - stop the running vert
 ```

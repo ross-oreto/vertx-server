@@ -7,12 +7,12 @@
         <RollingFile
                 name="roller"
                 fileName="logs/app.log"
-                filePattern="logs/app-%i.log.gz">
+                filePattern="logs/app-%i.log">
             <PatternLayout>
                 <Pattern>%d{dd MMM yyyy hh:mm:ss,SSS a} [%t] %level %logger{36} %msg%n</Pattern>
             </PatternLayout>
             <Policies>
-                <SizeBasedTriggeringPolicy size="1000 KB"/>
+                <SizeBasedTriggeringPolicy size="5000 KB"/>
             </Policies>
             <DefaultRolloverStrategy max="10"/>
         </RollingFile>
