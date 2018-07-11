@@ -1,5 +1,4 @@
 <project name="vertx-server" default="run" basedir=".">
-    <property name="winShell" value="cmd" />
     <property name="mainVerticle" value="org.oreto.vertx.server.AppServer"/>
     <property name="blockedThreadCheckInterval" value="10000"/>
     <property name="env" value="dev"/>
@@ -8,6 +7,9 @@
         <os family="windows"/>
     </condition>
 
+    <condition property="shell" value="cmd">
+        <os family="windows"/>
+    </condition>
     <condition property="gradlePath" value="gradlew.bat">
         <os family="windows"/>
     </condition>
@@ -18,6 +20,11 @@
         <os family="windows"/>
     </condition>
 
+    <condition property="shell" value="/bin/sh">
+        <not>
+            <os family="windows"/>
+        </not>
+    </condition>
     <condition property="gradlePath" value="/opt/apps/.sdkman/candidates/gradle/current/bin/gradle">
         <not>
             <os family="windows"/>
@@ -36,7 +43,7 @@
 
     <!-- run with redeploy -->
     <target name="-win-run" if="isWindows">
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="start"/>
             <arg value="${gradlePath}"/>
@@ -56,7 +63,7 @@
 
     <!-- start app -->
     <target name="-win-start" if="isWindows" >
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="${gradlePath}"/>
             <arg value="run"/>
@@ -77,21 +84,22 @@
 
     <!-- stop app -->
     <target name="-win-create-vid" if="isWindows">
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="${vertxPath} list | findstr &quot;${mainVerticle} ${ant.project.name}&quot; | sed -e &quot;s/\s.*$//&quot; > vid"/>
         </exec>
     </target>
     <target name="-bash-create-vid" unless="isWindows">
-        <exec executable="${vertxPath}">
-            <arg value="list | grep -e &quot;${mainVerticle}&quot; -e &quot;${ant.project.name}&quot; | sed -e 's/\s.*$//' > vid"/>
+        <exec executable="${shell}">
+            <arg value="-c"/>
+            <arg value="${vertxPath} list | grep -e &quot;${mainVerticle}&quot; -e &quot;${ant.project.name}&quot; | sed -e &quot;s/\s.*$//&quot; > vid"/>
         </exec>
     </target>
     <target name="-create-vid" depends="-win-create-vid,-bash-create-vid"/>
 
     <target name="-win-stop" depends="-win-kill,-win-create-vid" if="isWindows">
         <loadfile property="vid" srcFile="vid"/>
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="${vertxPath}"/>
             <arg value="stop"/>
@@ -118,7 +126,7 @@
     </target>
 
     <target name="-win-clean" if="isWindows">
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="${gradlePath}"/>
             <arg value="clean"/>
@@ -132,7 +140,7 @@
 
     <!-- run tests -->
     <target name="-win-test" if="isWindows" depends="-win-clean,-win-start">
-        <exec executable="${winShell}" outputproperty="failLog">
+        <exec executable="${shell}" outputproperty="failLog">
             <arg value="/c"/>
             <arg value="${gradlePath}"/>
             <arg value="test"/>
@@ -152,17 +160,17 @@
     </target>
 
     <target name="-win-kill">
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="taskkill"/>
             <arg value="/IM"/>
-            <arg value="${winShell}.exe"/>
+            <arg value="${shell}.exe"/>
         </exec>
     </target>
 
     <!-- other -->
     <target name="win-shell">
-        <exec executable="${winShell}">
+        <exec executable="${shell}">
             <arg value="/c"/>
             <arg value="start"/>
         </exec>
