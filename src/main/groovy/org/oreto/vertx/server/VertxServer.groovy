@@ -251,8 +251,12 @@ abstract class VertxServer extends AbstractVerticle {
                 , routingContext.statusCode() > 0 ? routingContext.statusCode() : HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
     }
 
+    protected String extractErrorMessage(Throwable cause, int status) {
+        cause?.getMessage() ?: (cause?.class?.name ?: HttpResponseStatus.valueOf(status).reasonPhrase())
+    }
+
     protected void handleError(RoutingContext routingContext, Throwable cause, int status) {
-        String message = cause?.getMessage() ?: HttpResponseStatus.valueOf(status).reasonPhrase()
+        String message = extractErrorMessage(cause, status)
         L.error(message)
         int code =  -1
         Errors errors = new Errors(errors: [new Error(
