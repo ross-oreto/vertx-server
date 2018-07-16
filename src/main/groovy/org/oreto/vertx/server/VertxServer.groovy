@@ -43,21 +43,23 @@ abstract class VertxServer extends AbstractVerticle {
 
     static String JSON_EXT = 'json'
     static String CONF_PATH = 'src/main/conf'
-    static def buildConfPath = { String name -> "${CONF_PATH}/${name}.$JSON_EXT" as String }
+
     static Collection<String> CONF_FILE_PATHS = [
-            buildConfPath('conf')
-            , buildConfPath('secrets')
-            , buildConfPath('routes')
+            'conf'
+            , 'secrets'
+            , 'routes'
     ]
 
     static ENV_PARAM_NAME = 'env'
     static ENV_LOCAL = 'local'
     static ENV_DEV = 'dev'
 
-    static String getEnvPath(String defaultEnv = null) {
+    static String buildConfPath(String name) { "${CONF_PATH}/${name}.$JSON_EXT" as String }
+
+    static String getConfEnvPath(String path, String defaultEnv = null) {
         String env = System.getProperty(ENV_PARAM_NAME) ?: defaultEnv
         if (System.getenv().hasProperty(ENV_PARAM_NAME)) env = System.getenv(ENV_PARAM_NAME)
-        env ? buildConfPath("conf-$env") : null
+        buildConfPath("$path-${env ?: ENV_LOCAL}")
     }
 
     protected JsonObject config
@@ -88,6 +90,12 @@ abstract class VertxServer extends AbstractVerticle {
             L.info('http server closed')
         })
         Files.delete(Paths.get('vid'))
+    }
+
+    protected Collection<String> confFilePaths(Collection<String> paths = []) {
+        def allPaths = CONF_FILE_PATHS
+        allPaths.addAll(paths)
+        allPaths
     }
 
     Map configMapFor(String name) {
@@ -129,7 +137,11 @@ abstract class VertxServer extends AbstractVerticle {
         router = Router.router(vertx)
 
         try {
-            config.getJsonArray('routes').each {
+            List routes = []
+            configMapFor('routes').each {
+                routes.addAll(it.value as Collection)
+            }
+            routes.each {
                 JsonObject routeConfig = it as JsonObject
                 Route route = router.route()
                 String path = routeConfig.getString('path')
@@ -188,54 +200,41 @@ abstract class VertxServer extends AbstractVerticle {
 
     ConfigRetriever createRetrieverWithSecrets() {
         ConfigRetrieverOptions options = new ConfigRetrieverOptions()
-        String env = System.getProperty(ENV_PARAM_NAME)
-        String envPath = getEnvPath()
 
-        // load supported conf names
-        CONF_FILE_PATHS.each {
-            if (vertx.fileSystem().existsBlocking(it)) {
+        Collection<String> envPaths = []
+        confFilePaths().each {
+            envPaths.add(buildConfPath(it))
+            envPaths.add(getConfEnvPath(it))
+        }
+
+        envPaths.each {
+            if (it && vertx.fileSystem().existsBlocking(it)) {
                 L.info("loading $it")
                 options.addStore(new ConfigStoreOptions().setType('file').setConfig(new JsonObject().put('path', it)))
                 loadedConfigFiles.add(new File(it))
             }
         }
-
-        // 1. check to see if the env system variable is set
-        if (envPath && vertx.fileSystem().existsBlocking(envPath)) {
-            L.info("loading $envPath")
-            options.addStore(new ConfigStoreOptions().setType('file').setConfig(new JsonObject().put('path', envPath)))
-            loadedConfigFiles.add(new File(envPath))
-        } else {
-            // 2. check if the -conf parameter is passed to the run command
-            def confIndex = context.processArgs()?.indexOf('--conf')
-            if (confIndex >= 0) {
-                String argConf = context.processArgs().get(confIndex + 1)
-                if (vertx.fileSystem().existsBlocking(argConf)) {
-                    L.info("loading $argConf")
-                    options.addStore(new ConfigStoreOptions().setType('file').setConfig(new JsonObject().put('path', argConf)))
-                    loadedConfigFiles.add(new File(argConf))
-                } else {
-                    // 3. the -conf param was not a file so just load the raw config
-                    JsonObject config = context.config()
-                    if (config) {
-                        options.addStore(new ConfigStoreOptions().setType(JSON_EXT).setConfig(config))
-                    } else {
-                        L.warn("could not load specified conf")
-                    }
-                }
+        // check if the -conf parameter is passed to the run command
+        def confIndex = context.processArgs()?.indexOf('--conf')
+        if (confIndex >= 0) {
+            String argConf = context.processArgs().get(confIndex + 1)
+            if (vertx.fileSystem().existsBlocking(argConf)) {
+                L.info("loading $argConf")
+                options.addStore(new ConfigStoreOptions().setType('file').setConfig(new JsonObject().put('path', argConf)))
+                loadedConfigFiles.add(new File(argConf))
             } else {
-                // finally if no config is specified default to local config
-                L.warn('no -conf path was found or specified')
-                env = ENV_LOCAL
-                String localConf = buildConfPath("conf-${env}")
-                if (vertx.fileSystem().existsBlocking(localConf)) {
-                    L.info("defaulting to conf: $localConf")
-                    options.addStore(new ConfigStoreOptions().setType('file').setConfig(new JsonObject().put('path', localConf)))
-                    loadedConfigFiles.add(new File(localConf))
+                // 3. the -conf param was not a file so just load the raw config
+                JsonObject config = context.config()
+                if (config) {
+                    options.addStore(new ConfigStoreOptions().setType(JSON_EXT).setConfig(config))
+                } else {
+                    L.warn("could not load specified conf")
                 }
             }
         }
 
+
+        String env = System.getProperty(ENV_PARAM_NAME)
         int scanPeriod = env == ENV_LOCAL || env?.contains(ENV_DEV) ? 5000 : 60000
         // load system and environment variables
         options
@@ -284,5 +283,9 @@ abstract class VertxServer extends AbstractVerticle {
 
     protected void redirect(RoutingContext routingContext, String url) {
         routingContext.response().putHeader("location",url).setStatusCode(302).end()
+    }
+
+    protected void notFound(RoutingContext routingContext) {
+        routingContext.fail(HttpResponseStatus.NOT_FOUND.code())
     }
 }

@@ -53,6 +53,16 @@
       "path": "/admin",
       "method": ["get"],
       "handler": "admin"
+    },
+    {
+      "path": "/admin/system",
+      "method": ["get"],
+      "handler": "system"
+    },
+    {
+      "path": "/admin/system/restart",
+      "method": ["post"],
+      "handler": "systemRestart"
     }
   ]
 }

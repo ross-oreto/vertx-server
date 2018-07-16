@@ -3,6 +3,7 @@ package org.oreto.vertx.server
 import com.fizzed.rocker.Rocker
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -12,8 +13,10 @@ import org.apache.logging.log4j.core.config.LoggerConfig
 import org.oreto.vertx.server.logging.LogEntry
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import io.vertx.core.http.HttpHeaders
+
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
 
 class AppServer extends VertxServer {
     private static final Logger L = LoggerFactory.getLogger(AppServer.class)
@@ -102,7 +105,7 @@ class AppServer extends VertxServer {
         if (file && file.exists()) {
             okJson(routingContext
                     , file.text.replaceAll('\n', '').replaceAll('\r', ''))
-        } else routingContext.fail(HttpResponseStatus.NOT_FOUND.code())
+        } else notFound(routingContext)
     }
 
     def saveConf = { RoutingContext routingContext ->
@@ -116,7 +119,7 @@ class AppServer extends VertxServer {
                 vertx.fileSystem().writeFileBlocking(file.path, body as Buffer)
                 okJson(routingContext, file.text)
             } else {
-                routingContext.fail(HttpResponseStatus.NOT_FOUND.code())
+                notFound(routingContext)
             }
         } else {
             routingContext.fail(HttpResponseStatus.BAD_REQUEST.code())
@@ -180,7 +183,7 @@ class AppServer extends VertxServer {
                 }
             })
         } else {
-            routingContext.fail(HttpResponseStatus.NOT_FOUND.code())
+            notFound(routingContext)
         }
     }
 
@@ -195,7 +198,55 @@ class AppServer extends VertxServer {
                 }
             })
         } else {
-            routingContext.fail(HttpResponseStatus.NOT_FOUND.code())
+            notFound(routingContext)
         }
+    }
+
+    static Collection<String> dependencies
+    static Map properties = ['java': System.getProperty("java.version")]
+    static isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+    static {
+        def gradle = isWindows ? "gradlew.bat" : 'gradlew'
+        def gradleDeps = "./$gradle dependencies".execute()?.text
+        def i = gradleDeps.indexOf('compile - Dependencies')
+        def j = gradleDeps.indexOf('compileClasspath - Compile')
+        def deps = gradleDeps.substring(i, j).split(System.lineSeparator())
+        dependencies = deps[1..deps.size() - 1]
+        def props = isWindows ? "./$gradle properties | findstr \"applicationName: version:\" | sed -e \"s/\\\\s.*\$//\"".execute()?.text :
+                "./$gradle properties | grep -e \"applicationName:\" -e \"version:\" | sed -e \"s/\\s.*\$//\"".execute()?.text
+        props.split(System.lineSeparator()).each {
+            def keyValue = it.split(':')
+            if (keyValue.size() > 1)
+                properties.put(keyValue[0].trim(), keyValue[1].trim())
+        }
+        if (Files.exists(Paths.get('.git'))) {
+            properties.put('source control', 'git branch'.execute().text)
+        } else if (Files.exists(Paths.get('.svn'))) {
+            'svn info'.execute().text.split(System.lineSeparator()).each {
+                def keyValue = it.split(':')
+                if (keyValue.size() > 1)
+                    properties.put(keyValue[0].trim(), keyValue[1].trim())
+            }
+        }
+    }
+
+    def system = { RoutingContext routingContext ->
+        renderTemplate('admin.system', routingContext, [
+                'title': 'System'
+                , 'properties': properties
+                , 'dependencies': dependencies
+        ])
+    }
+
+    def systemRestart = { RoutingContext routingContext ->
+        String ant = conf.getProperty('ant.home') ?: System.getProperty('ANT_HOME') ?: System.getenv('ANT_HOME')
+        if (ant) {
+            ant = Paths.get(ant, 'bin', 'ant').toString()
+        } else {
+            ant = Paths.get(System.getProperty("user.home"), '.sdkman', 'candidates', 'ant', 'current', 'bin', 'ant').toString()
+        }
+        if (isWindows) ant = "${ant}.bat"
+        "$ant restart".execute().text
+        redirect(routingContext, '/admin/system')
     }
 }

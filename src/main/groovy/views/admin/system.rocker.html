@@ -1,0 +1,33 @@
+@import java.util.Map
+@import java.util.List
+@args (String title, Map properties, List<String> dependencies)
+
+@css => {
+}
+
+@main.template(title, css, RockerContent.NONE) -> {
+    <form action="/admin/system/restart">
+        <button type="submit" onclick="return (confirm('Restart application?'));" formmethod="post">
+            Restart
+        </button>
+    </form>
+    <div>
+        <table>
+            @for ((key, item) : properties) {
+            <tr>
+                <td>@key: </td>
+                <td>@item</td>
+            </tr>
+            }
+        </table>
+        <br>
+        <h3>Dependencies</h3>
+        <table>
+            @for (item : dependencies) {
+            <tr>
+                <td>@item</td>
+            </tr>
+            }
+        </table>
+    </div>
+}
