@@ -155,30 +155,32 @@ abstract class VertxServer extends AbstractVerticle {
         corsHandler
     }
 
-    static void addCorsFromConfig(Route route, JsonObject corsConfig) {
-        if (corsConfig) {
+    static void addCorsFromConfig(Route route, Map corsConfig) {
+        if (corsConfig?.size()) {
             addCors(route
-                    , corsConfig.getString('allowedOriginPattern') ?: '*'
-                    , (corsConfig.getJsonArray('allowedMethods') ?: [HttpMethod.GET
-                                                                     , HttpMethod.POST
-                                                                     , HttpMethod.OPTIONS]) as Set<HttpMethod>
-                    , (corsConfig.getJsonArray('allowedHeaders') ?: ["x-requested-with"
-                                                                     , "Access-Control-Allow-Origin"
-                                                                     , "origin"
-                                                                     , "Content-Type"
-                                                                     , "accept"
-                                                                     , "X-PINGARUNER"]) as Set<String>
-                    , corsConfig.getBoolean('allowedCredentials') ?: false)
+                    , corsConfig.get('allowedOriginPattern') as String ?: '*'
+                    , (corsConfig.get('allowedMethods') ?: [HttpMethod.GET
+                                                            , HttpMethod.POST
+                                                            , HttpMethod.OPTIONS]) as Set<HttpMethod>
+                    , (corsConfig.get('allowedHeaders') ?: ["x-requested-with"
+                                                            , "Access-Control-Allow-Origin"
+                                                            , "origin"
+                                                            , "Content-Type"
+                                                            , "accept"
+                                                            , "X-PINGARUNER"]) as Set<String>
+                    , corsConfig.get('allowedCredentials') as Boolean ?: false)
         }
     }
 
     Router createRoutes() {
         router = Router.router(vertx)
-        addCorsFromConfig(router.route(), config.getJsonObject('routes.cors'))
+        addCorsFromConfig(router.route(), config.getJsonObject('routes.cors') as Map)
         try {
             List routes = []
-            configMapFor('routes').each {
-                routes.addAll(it.value as Collection)
+            def routesConfig = configMapFor('routes')
+            addCorsFromConfig(router.route(), routesConfig.get('routes.cors') as Map)
+            routesConfig.each {
+                if(it.value instanceof Collection) routes.addAll(it.value as Collection)
             }
             routes.each {
                 JsonObject routeConfig = it as JsonObject
