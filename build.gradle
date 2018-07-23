@@ -64,6 +64,7 @@ run {
              , "-Dvertx.options.blockedThreadCheckInterval=$blockedThreadCheckInterval"
              , "-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.SLF4JLogDelegateFactory"
              , "-Denv=$env"
+             , "-DsuppressSystemDeps=true"
              , mainVert
              , "--redeploy=$watchForGroovy"
              , "--launcher-class=$mainClassName"

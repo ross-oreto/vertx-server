@@ -202,30 +202,32 @@ class AppServer extends VertxServer {
         }
     }
 
-    static Collection<String> dependencies
+    static Collection<String> dependencies = []
     static Map properties = ['java': System.getProperty("java.version")]
     static isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
     static {
-        def gradle = isWindows ? "gradlew.bat" : 'gradlew'
-        def gradleDeps = "./$gradle dependencies".execute()?.text
-        def i = gradleDeps.indexOf('compile - Dependencies')
-        def j = gradleDeps.indexOf('compileClasspath - Compile')
-        def deps = gradleDeps.substring(i, j).split(System.lineSeparator())
-        dependencies = deps[1..deps.size() - 1]
-        def props = isWindows ? "./$gradle properties | findstr \"applicationName: version:\" | sed -e \"s/\\\\s.*\$//\"".execute()?.text :
-                "./$gradle properties | grep -e \"applicationName:\" -e \"version:\" | sed -e \"s/\\s.*\$//\"".execute()?.text
-        props.split(System.lineSeparator()).each {
-            def keyValue = it.split(':')
-            if (keyValue.size() > 1)
-                properties.put(keyValue[0].trim(), keyValue[1].trim())
-        }
-        if (Files.exists(Paths.get('.git'))) {
-            properties.put('source control', 'git branch'.execute().text)
-        } else if (Files.exists(Paths.get('.svn'))) {
-            'svn info'.execute().text.split(System.lineSeparator()).each {
+        if (System.getProperty("suppressSystemDeps") != 'true') {
+            def gradle = isWindows ? "gradlew.bat" : 'gradlew'
+            def gradleDeps = "./$gradle dependencies".execute()?.text
+            def i = gradleDeps.indexOf('compile - Dependencies')
+            def j = gradleDeps.indexOf('compileClasspath - Compile')
+            def deps = gradleDeps.substring(i, j).split(System.lineSeparator())
+            dependencies = deps[1..deps.size() - 1]
+            def props = isWindows ? "./$gradle properties | findstr \"applicationName: version:\" | sed -e \"s/\\\\s.*\$//\"".execute()?.text :
+                    "./$gradle properties | grep -e \"applicationName:\" -e \"version:\" | sed -e \"s/\\s.*\$//\"".execute()?.text
+            props.split(System.lineSeparator()).each {
                 def keyValue = it.split(':')
                 if (keyValue.size() > 1)
                     properties.put(keyValue[0].trim(), keyValue[1].trim())
+            }
+            if (Files.exists(Paths.get('.git'))) {
+                properties.put('source control', 'git branch'.execute().text)
+            } else if (Files.exists(Paths.get('.svn'))) {
+                'svn info'.execute().text.split(System.lineSeparator()).each {
+                    def keyValue = it.split(':')
+                    if (keyValue.size() > 1)
+                        properties.put(keyValue[0].trim(), keyValue[1].trim())
+                }
             }
         }
     }
