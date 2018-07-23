@@ -4,7 +4,6 @@ import java.text.SimpleDateFormat
 
 class LogEntry {
     Integer id
-    Date dateTime
     String date
     String thread
     String level
@@ -16,10 +15,10 @@ class LogEntry {
     static LogEntry New(String entry, Integer id) {
         List<String> els = entry.split('[ ]+', 9)
         String dstring = "${els[0]} ${els[1]} ${els[2]} ${els[3]} ${els[4]}"
-        Date d = dateFormat.parse(dstring)
+        //Date d = dateFormat.parse(dstring)
         new LogEntry(
                 id: id
-                , dateTime: d
+                //, dateTime: d
                 , date: dstring
                 , thread: els[5]?.trim()
                 , level: els[6]?.trim()

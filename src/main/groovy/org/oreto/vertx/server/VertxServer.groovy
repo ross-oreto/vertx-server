@@ -18,7 +18,9 @@ import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.ext.web.handler.StaticHandler
+import io.vertx.ext.web.handler.impl.CorsHandlerImpl
 import org.oreto.vertx.server.errors.Error
 import org.oreto.vertx.server.errors.Errors
 import org.slf4j.Logger
@@ -133,9 +135,46 @@ abstract class VertxServer extends AbstractVerticle {
         })
     }
 
+    static CorsHandler addCors(Route route
+                               , String allowedOriginPattern
+                               , Set<HttpMethod> allowedMethods
+                               , Set<String> allowedHeaders
+                               , boolean allowedCredentials) {
+
+        L.info("adding cors handler to route")
+        L.info("allowedOriginPattern: $allowedOriginPattern")
+        L.info("allowedMethods: $allowedMethods")
+        L.info("allowedHeaders: $allowedHeaders")
+        L.info("allowedCredentials: $allowedCredentials")
+        CorsHandler corsHandler = CorsHandler.create(allowedOriginPattern)
+                .allowedHeaders(allowedHeaders)
+                .allowedMethods(allowedMethods)
+                .allowCredentials(allowedCredentials)
+        route.handler(corsHandler)
+        CorsHandlerImpl
+        corsHandler
+    }
+
+    static void addCorsFromConfig(Route route, JsonObject corsConfig) {
+        if (corsConfig) {
+            addCors(route
+                    , corsConfig.getString('allowedOriginPattern') ?: '*'
+                    , (corsConfig.getJsonArray('allowedMethods') ?: [HttpMethod.GET
+                                                                     , HttpMethod.POST
+                                                                     , HttpMethod.OPTIONS]) as Set<HttpMethod>
+                    , (corsConfig.getJsonArray('allowedHeaders') ?: ["x-requested-with"
+                                                                     , "Access-Control-Allow-Origin"
+                                                                     , "origin"
+                                                                     , "Content-Type"
+                                                                     , "accept"
+                                                                     , "X-PINGARUNER"]) as Set<String>
+                    , corsConfig.getBoolean('allowedCredentials') ?: false)
+        }
+    }
+
     Router createRoutes() {
         router = Router.router(vertx)
-
+        addCorsFromConfig(router.route(), config.getJsonObject('routes.cors'))
         try {
             List routes = []
             configMapFor('routes').each {

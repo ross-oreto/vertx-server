@@ -1,4 +1,21 @@
 $(function() {
+    $.fn.dataTable.moment = function ( format, locale ) {
+        var types = $.fn.dataTable.ext.type;
+
+        // Add type detection
+        types.detect.unshift( function ( d ) {
+            return moment( d, format, locale, true ).isValid() ?
+                'moment-'+format :
+                null;
+        } );
+
+        // Add sorting method - use an integer for the sorting
+        types.order[ 'moment-'+format+'-pre' ] = function ( d ) {
+            return moment( d, format, locale, true ).unix();
+        };
+    };
+    $.fn.dataTable.moment( 'DD MMM YYYY hh:mm:ss,SSS a' );
+
     $.fn.dataTable.Api.register( 'column().title()', function () {
         var colheader = this.header();
         return $(colheader).text().trim();
@@ -27,13 +44,12 @@ $(function() {
         },
         "columns": [
             { "data": "id", "type": "num", "width": '3%' },
-            { "data": "dateTime", "visible": false, "type": "num", "width": '15%'  },
             { "data": "date", "orderData": 1, "width": '11%' },
             { "data": "level", "width": '5%'  },
             { "data": "className", "width": '10%'  },
             { "data": "message", "width": '35%'  }
         ],
-        "order": [[ 2, "desc" ]],
+        "order": [[ 1, "desc" ]],
         "lengthMenu": [[10, 25, 50, 100, 200, 500, 1000], [10, 25, 50, 100, 200, 500, 1000]],
         "iDisplayLength": 100,
         initComplete: function () {

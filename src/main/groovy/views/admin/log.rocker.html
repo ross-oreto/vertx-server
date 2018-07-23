@@ -8,6 +8,8 @@
 
 @main.template(title, css, RockerContent.NONE) -> {
     <script type="text/javascript" src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+    <script type="text/javascript" src="//cdn.datatables.net/plug-ins/1.10.19/sorting/datetime-moment.js"></script>
     <script type="text/javascript" src='/assets/js/log.js'></script>
     <div>
         <ul>
@@ -22,7 +24,6 @@
                 <thead>
                 <tr>
                     <th>Id</th>
-                    <th>DateTime</th>
                     <th>Date</th>
                     <th>Level</th>
                     <th>Class</th>
@@ -32,7 +33,6 @@
                 <tfoot>
                 <tr>
                     <th>Id</th>
-                    <th>DateTime</th>
                     <th>Date</th>
                     <th>Level</th>
                     <th>Class</th>
