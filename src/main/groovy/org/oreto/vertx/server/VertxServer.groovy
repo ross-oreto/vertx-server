@@ -157,17 +157,17 @@ abstract class VertxServer extends AbstractVerticle {
     static void addCorsFromConfig(Route route, Map corsConfig) {
         if (corsConfig != null) {
             addCors(route
-                    , corsConfig.get('allowedOriginPattern') as String ?: '*'
-                    , (corsConfig.get('allowedMethods') ?: [HttpMethod.GET
-                                                            , HttpMethod.POST
-                                                            , HttpMethod.OPTIONS]) as Set<HttpMethod>
-                    , (corsConfig.get('allowedHeaders') ?: ["x-requested-with"
-                                                            , "Access-Control-Allow-Origin"
-                                                            , "origin"
-                                                            , "Content-Type"
-                                                            , "accept"
-                                                            , "X-PINGARUNER"]) as Set<String>
-                    , corsConfig.get('allowedCredentials') as Boolean ?: false)
+                    , corsConfig.hasProperty('allowedOriginPattern') ? corsConfig.get('allowedOriginPattern') as String : '*'
+                    , (corsConfig.hasProperty('allowedMethods') ? corsConfig.get('allowedMethods') : [HttpMethod.GET
+                                                                                                      , HttpMethod.POST
+                                                                                                      , HttpMethod.OPTIONS]) as Set<HttpMethod>
+                    , (corsConfig.hasProperty('allowedHeaders') ? corsConfig.get('allowedHeaders') : ["x-requested-with"
+                                                                                                      , "Access-Control-Allow-Origin"
+                                                                                                      , "origin"
+                                                                                                      , "Content-Type"
+                                                                                                      , "accept"
+                                                                                                      , "X-PINGARUNER"]) as Set<String>
+                    , corsConfig.hasProperty('allowedCredentials') ? corsConfig.get('allowedCredentials') as Boolean : false)
         }
     }
 
