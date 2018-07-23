@@ -55,13 +55,12 @@ abstract class VertxServer extends AbstractVerticle {
     static ENV_PARAM_NAME = 'env'
     static ENV_LOCAL = 'local'
     static ENV_DEV = 'dev'
+    static ENVIRONMENT = System.getProperty(ENV_PARAM_NAME) ?: (System.getenv().hasProperty(ENV_PARAM_NAME) ?: ENV_LOCAL)
 
     static String buildConfPath(String name) { "${CONF_PATH}/${name}.$JSON_EXT" as String }
 
-    static String getConfEnvPath(String path, String defaultEnv = null) {
-        String env = System.getProperty(ENV_PARAM_NAME) ?: defaultEnv
-        if (System.getenv().hasProperty(ENV_PARAM_NAME)) env = System.getenv(ENV_PARAM_NAME)
-        buildConfPath("$path-${env ?: ENV_LOCAL}")
+    static String getConfEnvPath(String path) {
+        buildConfPath("$path-${ENVIRONMENT}")
     }
 
     protected JsonObject config
@@ -275,8 +274,7 @@ abstract class VertxServer extends AbstractVerticle {
         }
 
 
-        String env = System.getProperty(ENV_PARAM_NAME)
-        int scanPeriod = env == ENV_LOCAL || env?.contains(ENV_DEV) ? 5000 : 60000
+        int scanPeriod = ENVIRONMENT == ENV_LOCAL || ENVIRONMENT?.contains(ENV_DEV) ? 5000 : 60000
         // load system and environment variables
         options
                 .addStore(new ConfigStoreOptions().setType("sys"))
