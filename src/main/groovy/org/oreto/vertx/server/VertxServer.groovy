@@ -156,7 +156,7 @@ abstract class VertxServer extends AbstractVerticle {
     }
 
     static void addCorsFromConfig(Route route, Map corsConfig) {
-        if (corsConfig?.size()) {
+        if (corsConfig != null) {
             addCors(route
                     , corsConfig.get('allowedOriginPattern') as String ?: '*'
                     , (corsConfig.get('allowedMethods') ?: [HttpMethod.GET
