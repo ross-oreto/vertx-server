@@ -11,9 +11,11 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpHeaders
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServer
+import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.net.JksOptions
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -25,9 +27,15 @@ import org.oreto.vertx.server.errors.Error
 import org.oreto.vertx.server.errors.Errors
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import sun.security.tools.keytool.CertAndKeyGen
+import sun.security.x509.X500Name
 
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
 
 abstract class VertxServer extends AbstractVerticle {
     private static final Logger L = LoggerFactory.getLogger(VertxServer.class)
@@ -118,7 +126,12 @@ abstract class VertxServer extends AbstractVerticle {
 
     void startHttpServer() {
         int port = config.getInteger('port') ?: 9090
-        HttpServer httpServer = vertx.createHttpServer()
+        HttpServerOptions httpServerOptions
+        HttpServer httpServer = config.containsKey("ssl") && config.getBoolean("ssl") ?
+                vertx.createHttpServer((httpServerOptions = configureSsl(
+                        config.getString('keystorePath')
+                        , config.getString('keystorePass')))
+                ) : vertx.createHttpServer()
         Router router = createRoutes()
         httpServer.requestHandler(router.&accept).listen(port, { start ->
             if (start.succeeded()) {
@@ -127,9 +140,9 @@ abstract class VertxServer extends AbstractVerticle {
                 vertx.fileSystem().writeFile('port', this.httpServer.actualPort().toString() as Buffer, { file ->
                     if (file.failed()) L.warn('port file not created: ' + file.cause()?.message)
                 })
-                L.info("http server started on port $port")
+                L.info("${httpServerOptions?.isSsl() ? 'https' : 'http'} server started on port $port")
             } else {
-                L.error("http server failed to start: ${start.cause()?.message}")
+                L.error("${httpServerOptions?.isSsl() ? 'https' : 'http'}  server failed to start: ${start.cause()?.message}")
             }
         })
     }
@@ -168,6 +181,49 @@ abstract class VertxServer extends AbstractVerticle {
                                                                                                       , "accept"
                                                                                                       , "X-PINGARUNER"]) as Set<String>
                     , corsConfig.hasProperty('allowedCredentials') ? corsConfig.get('allowedCredentials') as Boolean : false)
+        }
+    }
+
+    static HttpServerOptions configureSsl(String keystorePath, String keystorePass) {
+        HttpServerOptions httpOpts = new HttpServerOptions()
+        Path keystore = keystorePath ? Paths.get(keystorePath) : Paths.get('app.jks')
+        keystorePath = keystore.toString()
+        if (Files.exists(keystore)) {
+            if (keystorePass) {
+                httpOpts.setSsl(true).setKeyStoreOptions(
+                        new JksOptions().setPath(keystorePath).setPassword(keystorePass))
+                L.info("using keystore ${keystorePath}")
+            } else {
+                L.error("A keystore was provided with no password")
+            }
+        } else {
+            if (generateKeystore(keystorePath, keystorePass)) {
+                httpOpts.setSsl(true).setKeyStoreOptions(
+                        new JksOptions().setPath(keystorePath).setPassword(keystorePass))
+                L.info("using keystore ${keystorePath}")
+            }
+        }
+        if (httpOpts.isSsl()) L.info('using ssl')
+        httpOpts
+    }
+
+    static boolean generateKeystore(String keystorePath, String keystorePass) {
+        // Generate a self-signed key pair and certificate.
+        try {
+            KeyStore store = KeyStore.getInstance("JKS")
+            store.load(null, null)
+            CertAndKeyGen keypair = new CertAndKeyGen("RSA", "SHA1WithRSA", null)
+            X500Name x500Name = new X500Name("localhost", "IT", "unknown", "unknown", "unknown", "unknown")
+            keypair.generate(1024)
+            PrivateKey privKey = keypair.getPrivateKey()
+            X509Certificate[] chain = new X509Certificate[1]
+            chain[0] = keypair.getSelfCertificate(x500Name, new Date(), (long) 365 * 24 * 60 * 60)
+            store.setKeyEntry("selfsigned", privKey, keystorePass.toCharArray(), chain)
+            store.store(new FileOutputStream(keystorePath), keystorePass.toCharArray())
+            true
+        } catch (Exception e) {
+            L.error(e.message)
+            false
         }
     }
 

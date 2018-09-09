@@ -18,6 +18,9 @@
         </RollingFile>
     </Appenders>
     <Loggers>
+        <Logger name="io.netty.handler.ssl" level="INFO" additivity="false">
+            <AppenderRef ref="roller"/>
+        </Logger>
         <Root level="info">
             <AppenderRef ref="console"/>
             <AppenderRef ref="roller"/>

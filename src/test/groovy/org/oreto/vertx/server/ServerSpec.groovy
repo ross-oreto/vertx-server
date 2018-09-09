@@ -35,8 +35,9 @@ class ServerSpec extends Specification {
     def setupSpec() {
         port = new File('port').text as int
         L.info(port as String)
-        String defaultUrl = "http://$localhost:$port/"
+        String defaultUrl = "${port == 443 ? 'https' : 'http'}://$localhost:$port/"
         client = new RESTClient(defaultUrl)
+        client.ignoreSSLIssues()
         if (!up()) "$ANT -Denv=$ENVIRONMENT start".execute().text
         Thread.sleep(5000)
     }
